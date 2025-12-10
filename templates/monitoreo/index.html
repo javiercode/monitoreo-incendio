@@ -1,0 +1,103 @@
+<!-- templates/monitoreo/index.html -->
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Monitoreo de Incendios - Bolivia</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                🔥 Monitoreo de Incendios Forestales - Bolivia
+            </a>
+            <div class="navbar-nav">
+                <a class="nav-link" href="/">Inicio</a>
+                <a class="nav-link" href="/mapa/">Mapa</a>
+                <a class="nav-link" href="/admin/">Admin</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-md-12 text-center mb-4">
+                <h1>Sistema de Monitoreo de Incendios Forestales</h1>
+                <p class="lead">Bolivia - Datos en tiempo real</p>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-4">
+                <div class="card text-white bg-primary mb-3">
+                    <div class="card-header">Estado del Sistema</div>
+                    <div class="card-body">
+                        <h5 class="card-title">✅ Operativo</h5>
+                        <p class="card-text">Django + Spatialite + GDAL</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card text-white bg-success mb-3">
+                    <div class="card-header">Base de Datos</div>
+                    <div class="card-body">
+                        <h5 class="card-title">Spatialite</h5>
+                        <p class="card-text">Con soporte geoespacial</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card text-white bg-warning mb-3">
+                    <div class="card-header">Acciones</div>
+                    <div class="card-body">
+                        <a href="/admin/" class="btn btn-light btn-block mb-2">Panel de Administración</a>
+                        <a href="/mapa/" class="btn btn-light btn-block">Ver Mapa</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mt-4">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">📋 Pasos siguientes</h5>
+                    </div>
+                    <div class="card-body">
+                        <ol>
+                            <li><strong>Agregar datos de incendios</strong>: Ve a <a href="/admin/">/admin/</a></li>
+                            <li><strong>Configurar mapa interactivo</strong>: Instala Folium completamente</li>
+                            <li><strong>Conectar con NASA FIRMS</strong>: Configura la API para datos en tiempo real
+                            </li>
+                            <li><strong>Agregar visualizaciones</strong>: Configura gráficos y estadísticas</li>
+                        </ol>
+
+                        <div class="alert alert-info mt-3">
+                            <h6>🔧 Configuración actual:</h6>
+                            <ul class="mb-0">
+                                <li>✅ Django 4.2.7 funcionando</li>
+                                <li>✅ Spatialite con soporte GIS básico</li>
+                                <li>✅ GDAL instalado y detectado</li>
+                                <li>⚠️ Advertencia Topology (no crítico)</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="mt-5 py-3 bg-light text-center">
+        <div class="container">
+            <p class="mb-0">Sistema de Monitoreo de Incendios Forestales &copy; 2024 - Bolivia</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+
+</html>

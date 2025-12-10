@@ -1,0 +1,19 @@
+# F:\projects\personal\python\monitero-incendios\environment.yml
+name: monitoreo-incendios
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.11
+  - django=4.2
+  - gdal
+  - geopandas
+  - folium
+  - numpy
+  - pandas
+  - matplotlib
+  - requests
+  - pip
+  - pip:
+    - python-decouple==3.8
+    - django-cors-headers==4.2.0

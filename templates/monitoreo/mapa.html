@@ -1,0 +1,174 @@
+<!-- templates/monitoreo/mapa.html -->
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mapa de Incendios - Bolivia</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        #map {
+            height: 600px;
+            width: 100%;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        .card {
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                🗺️ Mapa de Incendios - Bolivia
+            </a>
+            <div class="navbar-nav">
+                <a class="nav-link" href="/">← Volver al Inicio</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-md-12">
+                <h1>Mapa de Incendios Forestales</h1>
+                <p class="lead">Visualización geoespacial de incendios en Bolivia</p>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-3">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Controles</h5>
+                    </div>
+                    <div class="card-body">
+                        <button class="btn btn-primary w-100 mb-2" onclick="map.setView([-16.5, -64.5], 6)">
+                            Centrar en Bolivia
+                        </button>
+                        <button class="btn btn-secondary w-100 mb-2" onclick="addTestMarker()">
+                            Agregar marcador de prueba
+                        </button>
+                        <div class="form-check mt-3">
+                            <input class="form-check-input" type="checkbox" id="heatmapToggle" checked>
+                            <label class="form-check-label" for="heatmapToggle">
+                                Mostrar capa de calor
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Leyenda</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex align-items-center mb-2">
+                            <div
+                                style="width: 20px; height: 20px; background: red; border-radius: 50%; margin-right: 10px;">
+                            </div>
+                            <span>Incendio activo</span>
+                        </div>
+                        <div class="d-flex align-items-center mb-2">
+                            <div
+                                style="width: 20px; height: 20px; background: orange; border-radius: 50%; margin-right: 10px;">
+                            </div>
+                            <span>Incendio controlado</span>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <div
+                                style="width: 20px; height: 20px; background: gray; border-radius: 50%; margin-right: 10px;">
+                            </div>
+                            <span>Incendio extinto</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-9">
+                <div class="card">
+                    <div class="card-body p-0">
+                        <div id="map"></div>
+                    </div>
+                </div>
+
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h5 class="mb-0">💡 Información</h5>
+                    </div>
+                    <div class="card-body">
+                        <p>Este es un mapa básico usando Leaflet. Para la versión completa:</p>
+                        <ol>
+                            <li><strong>Instalar Folium</strong>: <code>conda install -c conda-forge folium</code></li>
+                            <li><strong>Cargar datos reales</strong>: Configurar conexión con NASA FIRMS</li>
+                            <li><strong>Agregar capas de calor</strong>: Usar Leaflet.heat</li>
+                            <li><strong>Integrar con Django</strong>: Pasar datos GeoJSON desde views.py</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // Inicializar mapa centrado en Bolivia
+        var map = L.map('map').setView([-16.5, -64.5], 6);
+
+        // Agregar capa base de OpenStreetMap
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
+            maxZoom: 18
+        }).addTo(map);
+
+        // Agregar algunos marcadores de ejemplo
+        var ciudades = [
+            { nombre: "La Paz", coords: [-16.5, -68.2], tipo: "capital" },
+            { nombre: "Santa Cruz", coords: [-17.8, -63.2], tipo: "incendio" },
+            { nombre: "Cochabamba", coords: [-17.4, -66.2], tipo: "ciudad" },
+            { nombre: "Sucre", coords: [-19.0, -65.3], tipo: "ciudad" },
+        ];
+
+        ciudades.forEach(function (ciudad) {
+            var color = ciudad.tipo === "incendio" ? "red" : "blue";
+            var icon = L.divIcon({
+                html: `<div style="background: ${color}; width: 15px; height: 15px; border-radius: 50%;"></div>`,
+                className: 'custom-div-icon'
+            });
+
+            L.marker(ciudad.coords, { icon: icon })
+                .addTo(map)
+                .bindPopup(`<b>${ciudad.nombre}</b><br>${ciudad.tipo === "incendio" ? "Área de incendio frecuente" : "Ciudad principal"}`);
+        });
+
+        // Función para agregar marcador de prueba
+        function addTestMarker() {
+            var lat = -16.5 + (Math.random() - 0.5) * 2;
+            var lng = -64.5 + (Math.random() - 0.5) * 2;
+
+            L.marker([lat, lng])
+                .addTo(map)
+                .bindPopup(`<b>Incendio de prueba</b><br>Lat: ${lat.toFixed(4)}<br>Lon: ${lng.toFixed(4)}`)
+                .openPopup();
+        }
+
+        // Control de capa de calor (simulado)
+        var heatmapToggle = document.getElementById('heatmapToggle');
+        heatmapToggle.addEventListener('change', function () {
+            if (this.checked) {
+                alert("Capa de calor activada (simulada)");
+            } else {
+                alert("Capa de calor desactivada");
+            }
+        });
+    </script>
+</body>
+
+</html>

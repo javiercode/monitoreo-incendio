@@ -1,0 +1,85 @@
+<!-- templates/incendios/mapa.html -->
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Monitoreo de Incendios - Bolivia</title>
+    {% load leaflet_tags %}
+    {% leaflet_js %}
+    {% leaflet_css %}
+    <style>
+        #map {
+            height: 600px;
+            width: 100%;
+        }
+
+        .info-panel {
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🌲 Sistema de Monitoreo de Incendios Forestales</h1>
+        <h2>Bolivia - Datos en Tiempo Real</h2>
+
+        <div class="info-panel">
+            <h3>Estadísticas</h3>
+            <p>Incendios activos: {{ incendios_count }}</p>
+            <p>Última actualización: {{ ultima_actualizacion }}</p>
+        </div>
+
+        {% leaflet_map "map" callback="window.map_init" %}
+
+        <div class="controls">
+            <button onclick="actualizarDatos()" class="btn btn-primary">
+                Actualizar Datos
+            </button>
+        </div>
+    </div>
+
+    <script>
+        function map_init(map, options) {
+            // Configurar vista inicial de Bolivia
+            map.setView([-16.5, -64.5], 6);
+
+            // Cargar datos de incendios
+            fetch('/api/incendios/')
+                .then(response => response.json())
+                .then(data => {
+                    data.forEach(incendio => {
+                        L.circleMarker(
+                            [incendio.latitude, incendio.longitude],
+                            {
+                                radius: incendio.intensity * 10,
+                                color: 'red',
+                                fillColor: '#f03',
+                                fillOpacity: 0.5
+                            }
+                        ).addTo(map)
+                            .bindPopup(`
+                            <b>${incendio.nombre}</b><br>
+                            Intensidad: ${incendio.intensity}<br>
+                            Fecha: ${incendio.fecha}
+                        `);
+                    });
+                });
+        }
+
+        function actualizarDatos() {
+            fetch('/api/actualizar/')
+                .then(response => response.json())
+                .then(data => {
+                    alert(`Datos actualizados: ${data.incendios_detectados} incendios encontrados`);
+                    location.reload();
+                });
+        }
+    </script>
+</body>
+
+</html>
