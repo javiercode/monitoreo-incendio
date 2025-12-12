@@ -95,22 +95,30 @@ WSGI_APPLICATION = "incendios_bolivia.wsgi.application"
 
 # Database
 # Usar spatialite si GDAL funciona, sino SQLite normal
-if GDAL_LIBRARY_PATH and GEOS_LIBRARY_PATH:
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.contrib.gis.db.backends.spatialite",
-            "NAME": BASE_DIR / "spatialite.db",
-        }
+# if GDAL_LIBRARY_PATH and GEOS_LIBRARY_PATH:
+#     DATABASES = {
+#         "default": {
+#             "ENGINE": "django.contrib.gis.db.backends.spatialite",
+#             "NAME": BASE_DIR / "spatialite.db",
+#         }
+#     }
+#     print("✅ Usando Spatialite para base de datos geoespacial")
+# else:
+#     DATABASES = {
+#         "default": {
+#             "ENGINE": "django.db.backends.sqlite3",
+#             "NAME": BASE_DIR / "db.sqlite3",
+#         }
+#     }
+#     print("⚠️ Usando SQLite normal (sin soporte GIS completo)")
+# En incendios_bolivia/settings.py, cambia:
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.sqlite3",  # ← SQLite normal, NO spatialite
+        "NAME": BASE_DIR / "db.sqlite3",  # ← Nombre diferente
     }
-    print("✅ Usando Spatialite para base de datos geoespacial")
-else:
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.sqlite3",
-            "NAME": BASE_DIR / "db.sqlite3",
-        }
-    }
-    print("⚠️ Usando SQLite normal (sin soporte GIS completo)")
+}
+print("✅ Usando SQLite normal (sin problemas Spatialite)")
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [

@@ -1,0 +1,184 @@
+<!-- templates/monitoreo/mapa_avanzado.html -->
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }} - Sistema de Monitoreo</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body {
+            padding-top: 20px;
+            background-color: #f8f9fa;
+        }
+
+        .navbar {
+            margin-bottom: 20px;
+        }
+
+        #map-container {
+            height: 700px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #dc3545;
+        }
+
+        .depto-badge {
+            background: #6c757d;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+        }
+
+        .map-frame {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-fire"></i> Mapa Interactivo de Incendios - Bolivia
+            </a>
+            <div class="navbar-nav">
+                <a class="nav-link" href="/"><i class="fas fa-home"></i> Inicio</a>
+                <a class="nav-link active" href="#"><i class="fas fa-map"></i> Mapa Avanzado</a>
+                <a class="nav-link" href="/admin/"><i class="fas fa-cog"></i> Admin</a>
+                <a class="nav-link" href="/api/incendios/json/" target="_blank"><i class="fas fa-code"></i> API JSON</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <h1><i class="fas fa-map-marked-alt"></i> {{ title }}</h1>
+                <p class="lead">Mapa interactivo con datos en tiempo real, capas de calor y análisis geoespacial</p>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Panel de estadísticas -->
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <h5><i class="fas fa-chart-bar"></i> Estadísticas</h5>
+                    <div class="stat-number">{{ estadisticas.total_incendios }}</div>
+                    <p class="text-muted">Incendios en el mapa</p>
+
+                    <div class="mt-3">
+                        <h6><i class="fas fa-fire"></i> Activos: {{ estadisticas.activos }}</h6>
+                        <h6><i class="fas fa-ruler-combined"></i> Área total: {{ estadisticas.area_total|floatformat:1
+                            }} ha</h6>
+                    </div>
+
+                    <hr>
+
+                    <h6><i class="fas fa-map-marker-alt"></i> Por Departamento:</h6>
+                    {% for depto, count in estadisticas.por_departamento.items %}
+                    <span class="depto-badge me-1 mb-1">{{ depto }}: {{ count }}</span>
+                    {% empty %}
+                    <p class="text-muted small">No hay datos por departamento</p>
+                    {% endfor %}
+
+                    <hr>
+
+                    <div class="mt-3">
+                        <button class="btn btn-danger btn-sm w-100 mb-2" onclick="agregarIncendioEjemplo()">
+                            <i class="fas fa-plus"></i> Agregar Incendio (Ejemplo)
+                        </button>
+                        <a href="/api/incendios/json/" target="_blank" class="btn btn-primary btn-sm w-100">
+                            <i class="fas fa-download"></i> Ver API JSON
+                        </a>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <h5><i class="fas fa-info-circle"></i> Controles del Mapa</h5>
+                    <ul class="small">
+                        <li><strong>Capa de calor:</strong> Muestra concentración de incendios</li>
+                        <li><strong>Capas base:</strong> Cambia entre mapas (OSM, Satélite, etc.)</li>
+                        <li><strong>Medir:</strong> Herramienta para medir distancias/áreas</li>
+                        <li><strong>Búsqueda:</strong> Encuentra ubicaciones por nombre</li>
+                    </ul>
+                    <div class="alert alert-info small">
+                        <i class="fas fa-lightbulb"></i> <strong>Tip:</strong> Haz clic en cualquier marcador para ver
+                        detalles
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mapa principal -->
+            <div class="col-md-9">
+                <div class="card">
+                    <div class="card-body p-0">
+                        <div id="map-container">
+                            <!-- El mapa se inserta aquí -->
+                            {{ mapa_html|safe }}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-3">
+                    <div class="alert alert-warning">
+                        <h5><i class="fas fa-sync-alt"></i> Próximos Pasos</h5>
+                        <p class="mb-2">Para conectar con datos reales:</p>
+                        <ol class="mb-0">
+                            <li>Crear modelos en la base de datos</li>
+                            <li>Conectar con NASA FIRMS API</li>
+                            <li>Agregar actualización automática</li>
+                            <li>Implementar autenticación y permisos</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="mt-5 py-3 bg-dark text-white text-center">
+        <div class="container">
+            <p class="mb-0">
+                <i class="fas fa-fire"></i> Sistema de Monitoreo de Incendios Forestales - Bolivia &copy; 2024 |
+                <i class="fas fa-code"></i> Django + Folium + SQLite |
+                <i class="fas fa-satellite"></i> Folium para visualización
+            </p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function agregarIncendioEjemplo() {
+            if (confirm('¿Agregar un incendio de ejemplo al mapa?')) {
+                alert('En una versión real, esto agregaría datos a la base de datos.\n\nPor ahora es solo una demostración de la funcionalidad.');
+                // Aquí iría el código para agregar datos reales
+            }
+        }
+
+        // Auto-centrar mapa al cambiar tamaño de ventana
+        window.addEventListener('resize', function () {
+            console.log('Ventana redimensionada - el mapa se ajusta automáticamente');
+        });
+    </script>
+</body>
+
+</html>
