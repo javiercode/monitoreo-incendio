@@ -1,0 +1,344 @@
+<!-- templates/monitoreo/dashboard.html -->
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }} - Sistema de Monitoreo</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body {
+            background-color: #f5f5f5;
+            padding-top: 20px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            transition: transform 0.2s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+        }
+
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+        }
+
+        .stat-label {
+            color: #6c757d;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+        }
+
+        .chart-container {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .incendio-item {
+            border-left: 4px solid #dc3545;
+            padding-left: 15px;
+            margin-bottom: 10px;
+        }
+
+        .severidad-bajo {
+            border-left-color: #28a745 !important;
+        }
+
+        .severidad-medio {
+            border-left-color: #ffc107 !important;
+        }
+
+        .severidad-alto {
+            border-left-color: #fd7e14 !important;
+        }
+
+        .severidad-critico {
+            border-left-color: #dc3545 !important;
+        }
+
+        .api-status {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+            padding: 10px 15px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+        }
+
+        .api-status.ok {
+            background: #28a745;
+            color: white;
+        }
+
+        .api-status.error {
+            background: #dc3545;
+            color: white;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Status API -->
+    <div class="api-status {% if api_key_configurada %}ok{% else %}error{% endif %}">
+        <i class="fas fa-satellite"></i>
+        NASA FIRMS: {% if api_key_configurada %}✅ Conectado{% else %}❌ No configurado{% endif %}
+    </div>
+
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-chart-line"></i> Dashboard de Monitoreo
+            </a>
+            <div class="navbar-nav">
+                <a class="nav-link" href="/"><i class="fas fa-home"></i> Inicio</a>
+                <a class="nav-link" href="/mapa-avanzado/"><i class="fas fa-map"></i> Mapa</a>
+                <a class="nav-link active" href="#"><i class="fas fa-chart-bar"></i> Dashboard</a>
+                <a class="nav-link" href="/admin/"><i class="fas fa-cog"></i> Admin</a>
+                <a class="nav-link" href="/api/nasa/estado/"><i class="fas fa-satellite"></i> Estado NASA</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <!-- Título -->
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <h1><i class="fas fa-fire"></i> {{ title }}</h1>
+                <p class="lead">Datos en tiempo real de incendios forestales en Bolivia</p>
+                {% if not api_key_configurada %}
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <strong>NASA FIRMS no configurado:</strong>
+                    Agrega tu API Key en el archivo .env para obtener datos reales
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Estadísticas principales -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="stat-card text-center">
+                    <div class="stat-number text-danger">{{ estadisticas.total_incendios }}</div>
+                    <div class="stat-label">Total Incendios</div>
+                    <small class="text-muted">Registrados en el sistema</small>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card text-center">
+                    <div class="stat-number text-warning">{{ estadisticas.activos }}</div>
+                    <div class="stat-label">Activos</div>
+                    <small class="text-muted">Monitoreándose ahora</small>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card text-center">
+                    <div class="stat-number text-success">{{ estadisticas.area_total|floatformat:0 }} ha</div>
+                    <div class="stat-label">Área Afectada</div>
+                    <small class="text-muted">Total de hectáreas</small>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card text-center">
+                    <div class="stat-number text-info">{{ estadisticas.incendios_hoy }}</div>
+                    <div class="stat-label">Reportados Hoy</div>
+                    <small class="text-muted">{{ "now"|date:"d/m/Y" }}</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gráficos -->
+        <div class="row">
+            <div class="col-md-8">
+                <div class="chart-container">
+                    <h5><i class="fas fa-chart-bar"></i> Incendios por Departamento</h5>
+                    <div id="grafico1">{{ grafico1|safe }}</div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="chart-container">
+                    <h5><i class="fas fa-chart-pie"></i> Distribución por Severidad</h5>
+                    <div id="grafico2">{{ grafico2|safe }}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Segunda fila -->
+        <div class="row mt-4">
+            <div class="col-md-8">
+                <div class="chart-container">
+                    <h5><i class="fas fa-chart-line"></i> Tendencia Temporal</h5>
+                    <div id="grafico3">{{ grafico3|safe }}</div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="chart-container">
+                    <h5><i class="fas fa-bell"></i> Incendios Recientes</h5>
+                    <div style="max-height: 400px; overflow-y: auto;">
+                        {% for incendio in incendios_recientes %}
+                        <div class="incendio-item severidad-{{ incendio.severidad }}">
+                            <h6 class="mb-1">{{ incendio.nombre }}</h6>
+                            <p class="mb-1 small">
+                                <i class="fas fa-map-marker-alt"></i>
+                                {{ incendio.departamento.nombre|default:"Sin departamento" }}
+                            </p>
+                            <p class="mb-1 small">
+                                <i class="fas fa-fire"></i>
+                                Severidad: {{ incendio.get_severidad_display }}
+                            </p>
+                            <p class="mb-0 small text-muted">
+                                <i class="far fa-clock"></i>
+                                {{ incendio.fecha_deteccion|date:"d/m/Y H:i" }}
+                            </p>
+                        </div>
+                        {% empty %}
+                        <p class="text-muted text-center">No hay incendios recientes</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Panel de control -->
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <div class="chart-container">
+                    <h5><i class="fas fa-info-circle"></i> Información del Sistema</h5>
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>Promedio de intensidad:</span>
+                            <span class="badge bg-info">{{ estadisticas.promedio_intensidad|floatformat:2 }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>Departamento más afectado:</span>
+                            <span class="badge bg-danger">{{ estadisticas.departamento_mas_afectado }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>Última actualización:</span>
+                            <span class="text-muted">
+                                {% if estadisticas.ultima_actualizacion %}
+                                {{ estadisticas.ultima_actualizacion|date:"d/m/Y H:i" }}
+                                {% else %}
+                                Nunca
+                                {% endif %}
+                            </span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>Fuente de datos:</span>
+                            <span class="badge bg-success">NASA FIRMS</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="chart-container">
+                    <h5><i class="fas fa-rocket"></i> Acciones Rápidas</h5>
+                    <div class="d-grid gap-2">
+                        <a href="/mapa-avanzado/" class="btn btn-primary btn-lg">
+                            <i class="fas fa-map-marked-alt"></i> Ver Mapa Interactivo
+                        </a>
+
+                        {% if api_key_configurada %}
+                        <button class="btn btn-success btn-lg" onclick="actualizarDatosNASA()">
+                            <i class="fas fa-sync-alt"></i> Actualizar desde NASA FIRMS
+                        </button>
+                        {% else %}
+                        <button class="btn btn-secondary btn-lg" disabled>
+                            <i class="fas fa-exclamation-triangle"></i> Configura API Key primero
+                        </button>
+                        {% endif %}
+
+                        <a href="/admin/monitoreo/incendioforestal/add/" class="btn btn-warning btn-lg">
+                            <i class="fas fa-plus-circle"></i> Agregar Incendio Manualmente
+                        </a>
+
+                        <a href="/api/nasa/estado/" target="_blank" class="btn btn-info btn-lg">
+                            <i class="fas fa-code"></i> Ver Estado API
+                        </a>
+                    </div>
+
+                    {% if api_key_configurada %}
+                    <div class="mt-3">
+                        <form method="post" action="/api/nasa/actualizar/" id="actualizarForm">
+                            {% csrf_token %}
+                            <div class="input-group">
+                                <span class="input-group-text">Días a obtener:</span>
+                                <input type="number" name="days" class="form-control" value="7" min="1" max="30">
+                                <button type="button" class="btn btn-outline-success" onclick="actualizarDatosNASA()">
+                                    <i class="fas fa-cloud-download-alt"></i> Actualizar
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="mt-5 py-3 bg-dark text-white text-center">
+        <div class="container">
+            <p class="mb-0">
+                <i class="fas fa-fire"></i> Sistema de Monitoreo de Incendios Forestales - Bolivia &copy; 2024 |
+                <i class="fas fa-code"></i> Django + NASA FIRMS + Plotly |
+                <i class="fas fa-satellite"></i> Datos en tiempo real
+            </p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function actualizarDatosNASA() {
+            if (!confirm('¿Actualizar datos desde NASA FIRMS? Esto puede tomar unos segundos.')) {
+                return;
+            }
+
+            const form = document.getElementById('actualizarForm');
+            const formData = new FormData(form);
+
+            fetch('/api/nasa/actualizar/', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': formData.get('csrfmiddlewaretoken')
+                }
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        alert(`✅ ${data.message}\n\n📊 Resultados:\n• Nuevos: ${data.resultados.nuevos}\n• Actualizados: ${data.resultados.actualizados}\n• Total: ${data.resultados.total}\n• Activos: ${data.resultados.activos}`);
+                        // Recargar la página para ver datos actualizados
+                        setTimeout(() => location.reload(), 1000);
+                    } else {
+                        alert(`❌ Error: ${data.message}`);
+                    }
+                })
+                .catch(error => {
+                    alert('❌ Error de conexión: ' + error.message);
+                });
+        }
+
+        // Auto-refresh cada 5 minutos
+        setTimeout(() => {
+            if (confirm('¿Actualizar datos automáticamente?')) {
+                document.getElementById('actualizarForm').submit();
+            }
+        }, 5 * 60 * 1000);
+    </script>
+</body>
+
+</html>

@@ -3,7 +3,18 @@ import folium
 from folium.plugins import HeatMap, MeasureControl, Geocoder
 from django.shortcuts import render
 from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.contrib.auth.decorators import login_required
+from monitoreo.utils.nasa_firms import NASAFirmsUpdater
+from decouple import config
 import json
+import plotly.express as px
+import plotly.graph_objects as go
+from plotly.offline import plot
+import pandas as pd
+from django.db.models import Count, Sum, Avg
+from django.utils import timezone
+from datetime import timedelta
 
 def index(request):
     """Página principal - versión segura sin dependencias de modelo"""
@@ -178,3 +189,165 @@ def api_incendios_json(request):
     }
     
     return JsonResponse(datos)
+
+@csrf_exempt
+@login_required
+def actualizar_datos_nasa(request):
+    """Endpoint para actualizar datos desde NASA FIRMS"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+    
+    try:
+        api_key = config('NASA_FIRMS_API_KEY', default=None)
+        if not api_key:
+            return JsonResponse({'error': 'API Key no configurada'}, status=500)
+        
+        updater = NASAFirmsUpdater(api_key=api_key)
+        
+        # Obtener parámetros
+        days = int(request.POST.get('days', 7))
+        
+        # Ejecutar actualización
+        resultados = updater.ejecutar_actualizacion(days=days)
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Datos actualizados correctamente',
+            'resultados': resultados,
+            'timestamp': datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+
+def estado_actualizacion(request):
+    """Muestra estado de la última actualización"""
+    from monitoreo.models import IncendioForestal
+    
+    # Obtener estadísticas
+    total = IncendioForestal.objects.count()
+    activos = IncendioForestal.objects.filter(estado='activo').count()
+    ultimo = IncendioForestal.objects.order_by('-fecha_deteccion').first()
+    
+    return JsonResponse({
+        'status': 'ok',
+        'estadisticas': {
+            'total_incendios': total,
+            'activos': activos,
+            'ultima_actualizacion': ultimo.fecha_deteccion.isoformat() if ultimo else None,
+            'api_key_configurada': bool(config('NASA_FIRMS_API_KEY', default=None))
+        }
+    })
+
+def dashboard(request):
+    """Dashboard con gráficos de datos reales"""
+    
+    from monitoreo.models import IncendioForestal, Departamento
+    
+    # Obtener datos
+    incendios = IncendioForestal.objects.all()
+    
+    # Gráfico 1: Incendios por departamento (TOP 5)
+    depto_data = list(incendios.values('departamento__nombre').annotate(
+        total=Count('id'),
+        area_total=Sum('area_afectada_ha')
+    ).order_by('-total')[:5])
+    
+    if depto_data:
+        fig1 = go.Figure(data=[
+            go.Bar(
+                x=[d['departamento__nombre'] or 'Sin departamento' for d in depto_data],
+                y=[d['total'] for d in depto_data],
+                text=[d['total'] for d in depto_data],
+                textposition='auto',
+                marker_color='crimson'
+            )
+        ])
+        fig1.update_layout(
+            title='Top 5 Departamentos con más Incendios',
+            xaxis_title="Departamento",
+            yaxis_title="Número de Incendios",
+            template="plotly_white"
+        )
+        grafico1 = plot(fig1, output_type='div', include_plotlyjs=False)
+    else:
+        grafico1 = "<p class='text-muted'>No hay datos para mostrar</p>"
+    
+    # Gráfico 2: Distribución por severidad
+    severidad_data = list(incendios.values('severidad').annotate(total=Count('id')))
+    
+    if severidad_data:
+        labels = [d['severidad'].title() for d in severidad_data]
+        values = [d['total'] for d in severidad_data]
+        
+        colors = {'bajo': 'green', 'medio': 'yellow', 'alto': 'orange', 'critico': 'red'}
+        color_sequence = [colors.get(sev.lower(), 'gray') for sev in labels]
+        
+        fig2 = go.Figure(data=[go.Pie(
+            labels=labels,
+            values=values,
+            hole=.3,
+            marker=dict(colors=color_sequence)
+        )])
+        fig2.update_layout(title='Distribución por Severidad')
+        grafico2 = plot(fig2, output_type='div', include_plotlyjs=False)
+    else:
+        grafico2 = "<p class='text-muted'>No hay datos para mostrar</p>"
+    
+    # Gráfico 3: Tendencia de últimos 30 días
+    fecha_limite = timezone.now() - timedelta(days=30)
+    tendencia_raw = incendios.filter(
+        fecha_deteccion__gte=fecha_limite
+    ).extra({
+        'fecha': "date(fecha_deteccion)"
+    }).values('fecha').annotate(total=Count('id')).order_by('fecha')
+    
+    if tendencia_raw:
+        tendencia_df = pd.DataFrame(list(tendencia_raw))
+        
+        fig3 = px.line(
+            tendencia_df,
+            x='fecha',
+            y='total',
+            title='Tendencia de Incendios (Últimos 30 días)',
+            markers=True,
+            line_shape='spline'
+        )
+        fig3.update_traces(line=dict(color='firebrick', width=3))
+        fig3.update_layout(
+            xaxis_title="Fecha",
+            yaxis_title="Número de Incendios"
+        )
+        grafico3 = plot(fig3, output_type='div', include_plotlyjs=False)
+    else:
+        grafico3 = "<p class='text-muted'>No hay datos para mostrar</p>"
+    
+    # Estadísticas generales
+    estadisticas = {
+        'total_incendios': incendios.count(),
+        'activos': incendios.filter(estado='activo').count(),
+        'area_total': incendios.aggregate(Sum('area_afectada_ha'))['area_afectada_ha__sum'] or 0,
+        'promedio_intensidad': incendios.aggregate(Avg('intensidad'))['intensidad__avg'] or 0,
+        'incendios_hoy': incendios.filter(
+            fecha_deteccion__date=timezone.now().date()
+        ).count(),
+        'departamento_mas_afectado': depto_data[0]['departamento__nombre'] if depto_data else 'N/A',
+        'ultima_actualizacion': incendios.order_by('-fecha_ultima_actualizacion').first().fecha_ultima_actualizacion 
+                               if incendios.exists() else None,
+    }
+    
+    # Incendios más recientes
+    incendios_recientes = incendios.order_by('-fecha_deteccion')[:10]
+    
+    return render(request, 'monitoreo/dashboard.html', {
+        'grafico1': grafico1,
+        'grafico2': grafico2,
+        'grafico3': grafico3,
+        'estadisticas': estadisticas,
+        'incendios_recientes': incendios_recientes,
+        'title': 'Dashboard de Monitoreo en Tiempo Real',
+        'api_key_configurada': bool(config('NASA_FIRMS_API_KEY', default=None))
+    })
